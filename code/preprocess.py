@@ -23,6 +23,7 @@ def get_data_MNIST(subset, data_path="../data"):
     :return:
         inputs (NumPy array of float32)
         labels (NumPy array of uint8)
+        a
     """
     ## http://yann.lecun.com/exdb/mnist/
     subset = subset.lower().strip()

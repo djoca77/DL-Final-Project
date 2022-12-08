@@ -1,17 +1,13 @@
 from __future__ import print_function
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.backends.cudnn as cudnn
-import torchvision
-import torchvision.transforms as transforms
+
 import sys
 import os
 import argparse
 
-import utils
 import timeit
+
+from preprocess import get_data_CIFAR
 
 import tensorflow as tf
 
@@ -32,20 +28,8 @@ parser.add_argument('--model', default="ResNet56_DoubleShared", help='ResNet20, 
 args = parser.parse_args()
 
 import model
-dic_model = {'ResNet20': resnet.ResNet20, \
-    'ResNet32':model.ResNet32, \
-    'ResNet44':resnet.ResNet44, \
-    'ResNet56':resnet.ResNet56, \
-    'ResNet110':resnet.ResNet110, \
-    'ResNet1202':resnet.ResNet1202, \
-    'ResNet56_DoubleShared':resnet.ResNet56_DoubleShared, \
-    'ResNet32_DoubleShared':resnet.ResNet32_DoubleShared, \
-    'ResNet56_SingleShared':resnet.ResNet56_SingleShared, \
-    'ResNet32_SingleShared':resnet.ResNet32_SingleShared, \
-    'ResNet56_SharedOnly':resnet.ResNet56_SharedOnly, \
-    'ResNet32_SharedOnly':resnet.ResNet32_SharedOnly, \
-    'ResNet56_NonShared':resnet.ResNet56_NonShared, \
-    'ResNet32_NonShared':resnet.ResNet32_NonShared}
+dic_model = {
+    'ResNet56_NonShared':model.ResNet56_NonShared}
     
 if args.model not in dic_model:
     print("The model is currently not supported")
@@ -53,8 +37,11 @@ if args.model not in dic_model:
 
 
 #Change these to preprocess
-trainloader = utils.get_traindata('CIFAR10',args.dataset_path,batch_size=args.batch_size,download=True)
-testloader = utils.get_testdata('CIFAR10',args.dataset_path,batch_size=args.batch_size) 
+#trainloader = utils.get_traindata('CIFAR10',args.dataset_path,batch_size=args.batch_size,download=True)
+#testloader = utils.get_testdata('CIFAR10',args.dataset_path,batch_size=args.batch_size) 
+
+trainloader = get_data_CIFAR('train')
+testloader = get_data_CIFAR('test')
 
 #args.visible_device sets which cuda devices to be used"
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
@@ -257,7 +244,7 @@ def train_basis_single(epoch, include_unique_basis=True):
             #print("B size:", B.shape)
 
             # compute orthogonalities btwn all baisis  
-            D = tf.linalg.matmul(B, torch.t(B)) 
+            D = tf.linalg.matmul(B, tf.transpose(B)) 
 
             # make diagonal zeros
             D = (D - tf.eye(num_all_basis, num_all_basis, device=device))**2
@@ -348,7 +335,7 @@ def train_basis_sharedonly(epoch):
             #print("B size:", B.shape)
 
             # compute orthogonalities btwn all baisis  
-            D = tf.linalg.matmul(B, torch.t(B)) 
+            D = tf.linalg.matmul(B, tf.transpose(B)) 
 
             # make diagonal zeros
             D = (D - tf.eye(num_all_basis, num_all_basis, device=device))**2
@@ -416,7 +403,7 @@ def test(epoch):
         }
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
-        torch.save(state, './checkpoint/' + 'CIFAR10-' + args.model + "-S" + str(args.shared_rank) + "-U" + str(args.unique_rank) + "-L" + str(args.lambdaR) + "-" + args.visible_device + '.pth')
+        tf.keras.Model.save(state, './checkpoint/' + 'CIFAR10-' + args.model + "-S" + str(args.shared_rank) + "-U" + str(args.unique_rank) + "-L" + str(args.lambdaR) + "-" + args.visible_device + '.pth')
         best_acc = acc_top1
         best_acc_top5 = acc_top5
         print("Best_Acc_top1 = %.3f" % acc_top1)
@@ -444,7 +431,7 @@ elif 'SingleShared' in args.model:
 elif 'SharedOnly' in args.model:
     func_train = train_basis_sharedonly
 
-optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+optimizer = tf.keras.optimizers.experimental.SGD(net.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     
 if args.pretrained != None:
     checkpoint = tf.keras.models.load_model(args.pretrained)

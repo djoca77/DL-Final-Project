@@ -1,17 +1,14 @@
 from __future__ import print_function
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.backends.cudnn as cudnn
-import torchvision
-import torchvision.transforms as transforms
+
 import sys
 import os
 import argparse
 
-import utils #additional preprocessing code to look into
+#import utils #additional preprocessing code to look into
 import timeit
+
+from preprocess import get_data_CIFAR
 
 
 
@@ -29,27 +26,15 @@ parser.add_argument('--model', default="ResNet56_DoubleShared", help='ResNet20, 
 args = parser.parse_args()
 
 import model
-dic_model = {'ResNet20': resnet.ResNet20, \
-    'ResNet32':model.ResNet32, \
-    'ResNet44':resnet.ResNet44, \
-    'ResNet56':resnet.ResNet56, \
-    'ResNet110':resnet.ResNet110, \
-    'ResNet1202':resnet.ResNet1202, \
-    'ResNet56_DoubleShared':resnet.ResNet56_DoubleShared, \
-    'ResNet32_DoubleShared':resnet.ResNet32_DoubleShared, \
-    'ResNet56_SingleShared':resnet.ResNet56_SingleShared, \
-    'ResNet32_SingleShared':resnet.ResNet32_SingleShared, \
-    'ResNet56_SharedOnly':resnet.ResNet56_SharedOnly, \
-    'ResNet32_SharedOnly':resnet.ResNet32_SharedOnly, \
-    'ResNet56_NonShared':resnet.ResNet56_NonShared, \
-    'ResNet32_NonShared':resnet.ResNet32_NonShared}
+dic_model = {
+    'ResNet56_NonShared':model.ResNet56_NonShared}
     
 if args.model not in dic_model:
     print("The model is currently not supported")
     sys.exit()
 
-testloader = utils.get_testdata('CIFAR10',args.dataset_path,batch_size=args.batch_size,download=True)
-
+#testloader = utils.get_testdata('CIFAR10',args.dataset_path,batch_size=args.batch_size,download=True)
+testloader = get_data_CIFAR('test')
 #args.visible_device sets which cuda devices to be used
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
 os.environ["CUDA_VISIBLE_DEVICES"]=args.visible_device

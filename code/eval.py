@@ -10,8 +10,12 @@ import sys
 import os
 import argparse
 
-import utils
+import utils #additional preprocessing code to look into
 import timeit
+
+
+
+import tensorflow as tf
 
 #Possible arguments
 parser = argparse.ArgumentParser(description='Following arguments are used for the script')
@@ -24,9 +28,9 @@ parser.add_argument('--dataset_path', default="./data/", help='A path to dataset
 parser.add_argument('--model', default="ResNet56_DoubleShared", help='ResNet20, ResNet32, ResNet44, ResNet56, ResNet110, ResNet1202, ResNet56_DoubleShared, ResNet32_DoubleShared, ResNet56_SingleShared, ResNet32_SingleShared, ResNet56_SharedOnly, ResNet32_SharedOnly, ResNet56_NonShared, ResNet32_NonShared')
 args = parser.parse_args()
 
-from models.cifar10 import resnet
+import model
 dic_model = {'ResNet20': resnet.ResNet20, \
-    'ResNet32':resnet.ResNet32, \
+    'ResNet32':model.ResNet32, \
     'ResNet44':resnet.ResNet44, \
     'ResNet56':resnet.ResNet56, \
     'ResNet110':resnet.ResNet110, \
@@ -68,7 +72,7 @@ def evaluation():
     correct_top1 = 0
     correct_top5 = 0
     total = 0
-    with torch.no_grad():
+    with tf.stop_gradient: #torch.no_grad()
         for batch_idx, (inputs, targets) in enumerate(testloader):
             inputs, targets = inputs.to(device), targets.to(device)
             outputs = net(inputs)
@@ -91,7 +95,7 @@ def evaluation():
     print("Eval_Acc_top5 = %.3f" % acc_top5)
         
 if args.pretrained != None:
-    checkpoint = torch.load(args.pretrained)
+    checkpoint = tf.keras.models.load_model(args.pretrained)
     net.load_state_dict(checkpoint['net_state_dict'])
     
 evaluation()

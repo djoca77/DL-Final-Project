@@ -129,6 +129,7 @@ class ResNet_NonShared(tf.keras.layers.Layer):
         self.layer3 = self._make_layer(block_basis, block_original, 64, num_blocks[2], unique_rank*4, stride=2)
         
         self.avgpool = tf.keras.layers.GlobalAveragePooling2D() #AdaptiveAvgPool2d((1, 1))
+        self.flat = tf.keras.layers.Flatten()
         self.fc = tf.keras.layers.Dense(num_classes)
         
         for m in self.get_config():
@@ -185,7 +186,7 @@ class ResNet_NonShared(tf.keras.layers.Layer):
         x = self.layer3(x)
 
         x = self.avgpool(x)
-        x = tf.keras.layers.Flatten(x)
+        x = self.flat(x)
         x = self.fc(x)
      
         return x

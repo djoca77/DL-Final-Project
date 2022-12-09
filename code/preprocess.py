@@ -124,9 +124,9 @@ def get_data_CIFAR(subset, batch_size, data_path="../data"):
 
     image = tf.convert_to_tensor(image, dtype=tf.float32)
     label = tf.convert_to_tensor(label)
-    print(int(n/batch_size))
+    #print(int(n/batch_size))
 
-    image = tf.even_splits(image, int(n/batch_size))
+    #image = tf.even_splits(image, int(n/batch_size))
 
     return image, label
 

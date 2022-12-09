@@ -10,7 +10,7 @@ import timeit
 
 from preprocess import get_data_CIFAR
 
-
+import utils
 
 import tensorflow as tf
 
@@ -33,8 +33,8 @@ if args.model not in dic_model:
     print("The model is currently not supported")
     sys.exit()
 
-#testloader = utils.get_testdata('CIFAR10',args.dataset_path,batch_size=args.batch_size,download=True)
-testloader = get_data_CIFAR('test')
+testloader = utils.get_testdata('CIFAR10',args.dataset_path,batch_size=args.batch_size,download=True)
+#testloader = get_data_CIFAR('test')
 #args.visible_device sets which cuda devices to be used
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
 os.environ["CUDA_VISIBLE_DEVICES"]=args.visible_device

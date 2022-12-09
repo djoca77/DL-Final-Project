@@ -2,9 +2,10 @@ import gzip
 import pickle
 
 import numpy as np
+import tensorflow as tf
 
 
-def get_data_MNIST(subset, data_path="../data"):
+def get_data_MNIST(subset, batch_size, data_path="../data"):
     """
     Takes in a subset of data ("train" or "test"), unzips the inputs and labels files,
     normalizes the inputs, and returns (NumPy array of inputs, NumPy array of labels).
@@ -55,7 +56,7 @@ def get_data_MNIST(subset, data_path="../data"):
     return image, label
 
 
-def get_data_CIFAR(subset, data_path="../data"):
+def get_data_CIFAR(subset, batch_size, data_path="../data"):
     """
     CIFAR data contains the files data_batch_1, data_batch_2, ...,
     as well as test_batch, so you'll need to combine all train batches
@@ -121,7 +122,13 @@ def get_data_CIFAR(subset, data_path="../data"):
     image = np.array(image, dtype=np.uint8)
     label_names = np.array(label_names)
 
-    return image, label, label_names
+    image = tf.convert_to_tensor(image, dtype=tf.float32)
+    label = tf.convert_to_tensor(label)
+    print(int(n/batch_size))
+
+    image = tf.even_splits(image, int(n/batch_size))
+
+    return image, label
 
 
 def shuffle_data(image_full, label_full, seed):

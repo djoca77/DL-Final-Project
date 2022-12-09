@@ -19,7 +19,7 @@ parser.add_argument('--weight_decay', default=5e-4, type=float, help='Weight dec
 parser.add_argument('--lambdaR', default=10, type=float, help='Lambda (Basis regularization)')
 parser.add_argument('--shared_rank', default=16, type=int, help='Number of shared base)')
 parser.add_argument('--unique_rank', default=1, type=int, help='Number of unique base')
-parser.add_argument('--batch_size', default=256, type=int, help='Batch_size')
+parser.add_argument('--batch_size', default=12500, type=int, help='Batch_size')
 parser.add_argument('--visible_device', default="0", help='CUDA_VISIBLE_DEVICES')
 parser.add_argument('--pretrained', default=None, help='Path of a pretrained model file')
 parser.add_argument('--starting_epoch', default=0, type=int, help='An epoch which model training starts')
@@ -40,8 +40,8 @@ if args.model not in dic_model:
 #trainloader = utils.get_traindata('CIFAR10',args.dataset_path,batch_size=args.batch_size,download=True)
 #testloader = utils.get_testdata('CIFAR10',args.dataset_path,batch_size=args.batch_size) 
 
-trainloader = get_data_CIFAR('train')
-testloader = get_data_CIFAR('test')
+trainloader = get_data_CIFAR('train', args.batch_size, data_path='/Users/jordanwatts/Desktop/DL-Final-Project/data')
+testloader = get_data_CIFAR('test', args.batch_size, data_path='/Users/jordanwatts/Desktop/DL-Final-Project/data')
 
 #args.visible_device sets which cuda devices to be used"
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
@@ -78,11 +78,16 @@ def train(epoch):
     total = 0
     
     count = 0
+   # print(trainloader[1])
+
     #for batch_idx, (inputs, targets) in enumerate(trainloader):
-    for inputs, targets in enumerate(trainloader):
+    for batch_idx, (inputs) in enumerate(trainloader):
+        #print(inputs.shape)
+        #print(targets.shape)
         ##"device" no work
         #inputs, targets = inputs.to(device), targets.to(device)
-    
+        #print(inputs)
+        print(batch_idx)
         #optimizer.zero_grad()
         for var in optimizer.variables():
             var.assign(tf.zeros_like(var))
@@ -91,15 +96,15 @@ def train(epoch):
         
         _, pred = outputs.topk(5, 1, largest=True, sorted=True)
 
-        label_e = targets.view(targets.size(0), -1).expand_as(pred)
+        label_e = trainloader[1].view(trainloader[1].size(0), -1).expand_as(pred)
         correct = pred.eq(label_e).float()
 
         correct_top5 += correct[:, :5].sum()
         correct_top1 += correct[:, :1].sum()        
-        total += targets.size(0)
+        total += trainloader[1].size(0)
                         
-        loss = criterion(outputs, targets)
-        if (count == 0):
+        loss = criterion(outputs, trainloader[1])
+        if (batch_idx == 0):
             print("accuracy_loss: %.6f" % loss)
             count = 1
         loss.backward()

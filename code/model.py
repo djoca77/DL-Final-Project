@@ -21,17 +21,18 @@ class BasicBlock_NonShared(tf.keras.layers.Layer):
         self.total_rank_1 = unique_rank
         self.total_rank_2 = unique_rank
         
-        self.basis_conv1 = tf.keras.layers.Conv2D(unique_rank, 3, strides=stride, padding='valid', use_bias=False)
-        self.basis_bn1 = tf.keras.layers.BatchNormalization(self.total_rank_1)
+        self.basis_conv1 = tf.keras.layers.Conv2D(unique_rank, 3, strides=stride, padding='same', use_bias=False)
+        self.basis_bn1 = tf.keras.layers.BatchNormalization()
         self.coeff_conv1 = tf.keras.layers.Conv2D(planes, 1, strides=1, padding='same', use_bias=False)
         
-        self.bn1 = tf.keras.layers.BatchNormalization(planes)
+        #self.bn1 = tf.keras.layers.BatchNormalization(planes)
+        self.bn1 = tf.keras.layers.BatchNormalization()
         
-        self.basis_conv2 = tf.keras.layers.Conv2D(unique_rank, 3, strides=1, padding='valid', use_bias=False)
-        self.basis_bn2 = tf.keras.layers.BatchNormalization(self.total_rank_2)
+        self.basis_conv2 = tf.keras.layers.Conv2D(unique_rank, 3, strides=1, padding='same', use_bias=False)
+        self.basis_bn2 = tf.keras.layers.BatchNormalization()
         self.coeff_conv2 = tf.keras.layers.Conv2D(planes, 1, strides=1, padding='same', use_bias=False)
         
-        self.bn2 = tf.keras.layers.BatchNormalization(planes)
+        self.bn2 = tf.keras.layers.BatchNormalization()
 
         self.shortcut = tf.keras.Sequential()
         if stride != 1 or in_planes != planes:
@@ -45,7 +46,7 @@ class BasicBlock_NonShared(tf.keras.layers.Layer):
             elif option == 'B':
                 self.shortcut = tf.keras.layers.Sequential(
                      tf.keras.layers.Conv2D(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False),
-                     tf.keras.layers.BatchNormalization(self.expansion * planes)
+                     tf.keras.layers.BatchNormalization()
                 )
 
     def call(self, x):           
@@ -54,7 +55,7 @@ class BasicBlock_NonShared(tf.keras.layers.Layer):
         out = self.coeff_conv1(out)
         
         out = self.bn1(out)
-        out = tf.nn.relu(out, inplace=True)
+        out = tf.nn.relu(out)
         
         out = self.basis_conv2(out)
         out = self.basis_bn2(out)
@@ -62,8 +63,8 @@ class BasicBlock_NonShared(tf.keras.layers.Layer):
         
         out = self.bn2(out)
 
-        out += self.shortcut(x)
-        out = tf.relu(out, inplace=True)
+        #out += self.shortcut(x)
+        out = tf.nn.relu(out)
         
         return out
 
@@ -75,10 +76,10 @@ class BasicBlock(tf.keras.layers.Layer):
     def __init__(self, in_planes, planes, stride=1, option='A'):
         super(BasicBlock, self).__init__()
         
-        self.conv1 = tf.keras.layers.Conv2D(planes, 3, strides=stride, padding='valid', use_bias=False)
-        self.bn1 = tf.keras.layers.BatchNormalization(planes)
-        self.conv2 = tf.keras.layers.Conv2D(planes, 3, strides=1, padding='valid', use_bias=False)
-        self.bn2 = tf.keras.layers.BatchNormalization(planes)
+        self.conv1 = tf.keras.layers.Conv2D(planes, 3, strides=stride, padding='same', use_bias=False)
+        self.bn1 = tf.keras.layers.BatchNormalization()
+        self.conv2 = tf.keras.layers.Conv2D(planes, 3, strides=1, padding='same', use_bias=False)
+        self.bn2 = tf.keras.layers.BatchNormalization()
 
         self.shortcut = tf.keras.Sequential()
         if stride != 1 or in_planes != planes:
@@ -89,22 +90,24 @@ class BasicBlock(tf.keras.layers.Layer):
                 """
                 self.shortcut = LambdaLayer(lambda x:
                                             tf.pad(x[:, :, ::2, ::2], (0, 0, 0, 0, planes//4, planes//4), "constant", 0))
+
+                print(1111)
             elif option == 'B':
                 self.shortcut = tf.keras.Sequential(
-                     tf.keras.layers.Conv2D(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False),
-                     tf.keras.layers.BatchNormalization(self.expansion * planes)
+                     tf.keras.layers.Conv2D(self.expansion * planes, 1, strides=stride, use_bias=False),
+                     tf.keras.layers.BatchNormalization()
                 )
 
     def call(self, x):
         out = self.conv1(x)
         out = self.bn1(out)
-        out = tf.nn.relu(out, inplace=True)
+        out = tf.nn.relu(out)
 
         out = self.conv2(out)
         out = self.bn2(out)
 
-        out += self.shortcut(x)
-        out = tf.nn.relu(out, inplace=True)
+        #out += self.shortcut(x)
+        out = tf.nn.relu(out)
         
         return out
 
@@ -116,8 +119,8 @@ class ResNet_NonShared(tf.keras.layers.Layer):
         super(ResNet_NonShared, self).__init__()
         self.in_planes = 16
 
-        self.conv1 = tf.keras.layers.Conv2D(16, 3, strides=1, padding='valid', use_bias=False)
-        self.bn1 = tf.keras.layers.BatchNormalization(16)
+        self.conv1 = tf.keras.layers.Conv2D(16, 3, strides=1, padding='same', use_bias=False)
+        self.bn1 = tf.keras.layers.BatchNormalization()
         
         self.layer1 = self._make_layer(block_basis, block_original, 16, num_blocks[0], unique_rank*1, stride=1)
         
@@ -175,14 +178,14 @@ class ResNet_NonShared(tf.keras.layers.Layer):
     def call(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
-        x = tf.nn.relu(x, inplace=True)
+        x = tf.nn.relu(x)
 
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
 
         x = self.avgpool(x)
-        x = tf.keras.layers.Flatten(x, 1)
+        x = tf.keras.layers.Flatten(x)
         x = self.fc(x)
      
         return x

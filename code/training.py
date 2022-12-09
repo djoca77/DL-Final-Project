@@ -57,26 +57,36 @@ elif 'NonShared' in args.model:
 else:
     net = dic_model[args.model]()
     
-net = net.to(device)
+
+##might need to unedit out
+#net = net.to(device)
                     
 #CrossEntropyLoss for accuracy loss criterion
-criterion = tf.keras.losses.CategorialCrossentropy()
+criterion = tf.keras.losses.CategoricalCrossentropy()
 
 def train(epoch): 
     """
     Training for original models.
     """   
     print('\nCuda ' + args.visible_device + ' Epoch: %d' % epoch)
-    net.train()
+
+    #find tensorflow equivalent
+    #net.train()
     
     correct_top1 = 0
     correct_top5 = 0
     total = 0
     
-    for batch_idx, (inputs, targets) in enumerate(trainloader):
-        inputs, targets = inputs.to(device), targets.to(device)
+    count = 0
+    #for batch_idx, (inputs, targets) in enumerate(trainloader):
+    for inputs, targets in enumerate(trainloader):
+        ##"device" no work
+        #inputs, targets = inputs.to(device), targets.to(device)
     
-        optimizer.zero_grad()
+        #optimizer.zero_grad()
+        for var in optimizer.variables():
+            var.assign(tf.zeros_like(var))
+
         outputs = net(inputs)
         
         _, pred = outputs.topk(5, 1, largest=True, sorted=True)
@@ -89,8 +99,9 @@ def train(epoch):
         total += targets.size(0)
                         
         loss = criterion(outputs, targets)
-        if (batch_idx == 0):
+        if (count == 0):
             print("accuracy_loss: %.6f" % loss)
+            count = 1
         loss.backward()
         optimizer.step()
     
@@ -416,8 +427,9 @@ def adjust_learning_rate(optimizer, epoch, args_lr):
     if epoch > 225:
         lr = lr * 0.1
 
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
+##might need to bring back
+    #for param_group in optimizer.param_groups:
+        #param_group['lr'] = lr
 
 best_acc = 0
 best_acc_top5 = 0
@@ -431,7 +443,8 @@ elif 'SingleShared' in args.model:
 elif 'SharedOnly' in args.model:
     func_train = train_basis_sharedonly
 
-optimizer = tf.keras.optimizers.experimental.SGD(net.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+#optimizer = tf.keras.optimizers.SGD(net.parameters(), lr=args.lr, momentum=args.momentum, decay=args.weight_decay)
+optimizer = tf.keras.optimizers.SGD(learning_rate=args.lr, momentum=args.momentum, decay=args.weight_decay)
     
 if args.pretrained != None:
     checkpoint = tf.keras.models.load_model(args.pretrained)

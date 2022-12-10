@@ -91,17 +91,27 @@ def train(epoch):
         #optimizer.zero_grad()
         for var in optimizer.variables():
             var.assign(tf.zeros_like(var))
-
-        outputs = net(inputs)
         
-        _, pred = outputs.topk(5, 1, largest=True, sorted=True)
+        outputs = net(tf.expand_dims(tf.gather(inputs,0),0))
+        
+        #_, pred = outputs.topk(5, 1, largest=True, sorted=True)
+        pred = tf.math.top_k(outputs, k=1, sorted=True)
+        print(trainloader[1])
 
-        label_e = trainloader[1].view(trainloader[1].size(0), -1).expand_as(pred)
+        #label_e = trainloader[1].view(trainloader[1].size(0), -1).expand_as(pred)
+        print(pred)
+
+        label_e = tf.reshape(trainloader[1],(trainloader[1].shape[0], -1))
+        label_e = tf.cast(label_e,float)
+        label_e = tf.broadcast_to(label_e,pred)
+
+
+
         correct = pred.eq(label_e).float()
 
         correct_top5 += correct[:, :5].sum()
         correct_top1 += correct[:, :1].sum()        
-        total += trainloader[1].size(0)
+        total += trainloader[1].shape(0)
                         
         loss = criterion(outputs, trainloader[1])
         if (batch_idx == 0):
@@ -131,17 +141,22 @@ def train_basis_double(epoch, include_unique_basis=True):
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         inputs, targets = inputs.to(device), targets.to(device)
     
-        optimizer.zero_grad()
-        outputs = net(inputs)
+        #optimizer.zero_grad()
+        #outputs = net(inputs)
+        outputs = net(tf.expand_dims(tf.gather(inputs,0),0))
         
-        _, pred = outputs.topk(5, 1, largest=True, sorted=True)
+        #_, pred = outputs.topk(5, 1, largest=True, sorted=True)
+        pred = tf.math.top_k(outputs, k=5, sorted=True)
 
-        label_e = targets.view(targets.size(0), -1).expand_as(pred)
+        #label_e = targets.view(targets.size(0), -1).expand_as(pred)
+        label_e = tf.reshape(targets,(targets.shape(0), -1))
+        label_e = tf.broadcast_to(label_e,pred)
+
         correct = pred.eq(label_e).float()
 
         correct_top5 += correct[:, :5].sum()
         correct_top1 += correct[:, :1].sum()        
-        total += targets.size(0)
+        total += targets.shape(0)
         
         # get similarity of elements of filter bases
         cnt_sim = 0 
@@ -227,17 +242,22 @@ def train_basis_single(epoch, include_unique_basis=True):
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         inputs, targets = inputs.to(device), targets.to(device)
     
-        optimizer.zero_grad()
-        outputs = net(inputs)
+        #optimizer.zero_grad()
+        #outputs = net(inputs)
+        outputs = net(tf.expand_dims(tf.gather(inputs,0),0))
         
-        _, pred = outputs.topk(5, 1, largest=True, sorted=True)
+        #_, pred = outputs.topk(5, 1, largest=True, sorted=True)
+        pred = tf.math.top_k(outputs, k=5, sorted=True)
 
-        label_e = targets.view(targets.size(0), -1).expand_as(pred)
+        #label_e = targets.view(targets.size(0), -1).expand_as(pred)
+        label_e = tf.reshape(targets,(targets.shape(0), -1))
+        label_e = tf.broadcast_to(label_e,pred)
+
         correct = pred.eq(label_e).float()
 
         correct_top5 += correct[:, :5].sum()
         correct_top1 += correct[:, :1].sum()        
-        total += targets.size(0)
+        total += targets.shape(0)
         
         # get similarity of elements of filter bases
         cnt_sim = 0 
@@ -322,17 +342,22 @@ def train_basis_sharedonly(epoch):
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         inputs, targets = inputs.to(device), targets.to(device)
     
-        optimizer.zero_grad()
-        outputs = net(inputs)
+        #optimizer.zero_grad()
+        #outputs = net(inputs)
+        outputs = net(tf.expand_dims(tf.gather(inputs,0),0))
         
-        _, pred = outputs.topk(5, 1, largest=True, sorted=True)
+        #_, pred = outputs.topk(5, 1, largest=True, sorted=True)
+        pred = tf.math.top_k(outputs, k=5, sorted=True)
 
-        label_e = targets.view(targets.size(0), -1).expand_as(pred)
+        #label_e = targets.view(targets.size(0), -1).expand_as(pred)
+        label_e = tf.reshape(targets,(targets.shape(0), -1))
+        label_e = tf.broadcast_to(label_e,pred)
+
         correct = pred.eq(label_e).float()
 
         correct_top5 += correct[:, :5].sum()
         correct_top1 += correct[:, :1].sum()        
-        total += targets.size(0)
+        total += targets.shape(0)
         
         # get similarity of basis filters
         cnt_sim = 0 
@@ -394,17 +419,21 @@ def test(epoch):
     with tf.stop_gradient:
         for batch_idx, (inputs, targets) in enumerate(testloader):
             inputs, targets = inputs.to(device), targets.to(device)
-            outputs = net(inputs)
+            #outputs = net(inputs)
+            outputs = net(tf.expand_dims(tf.gather(inputs,0),0))
             
-            _, pred = outputs.topk(5, 1, largest=True, sorted=True)
+            #_, pred = outputs.topk(5, 1, largest=True, sorted=True)
+            pred = tf.math.top_k(outputs, k=5, sorted=True)
 
-            label_e = targets.view(targets.size(0), -1).expand_as(pred)
-            correct = pred.eq(label_e).float()
+            label_e = tf.reshape(targets,(targets.shape(0), -1))
+            label_e = tf.broadcast_to(label_e,pred)
+            correct = tf.math.equal(pred,label_e)
+            correct = tf.cast(correct,float)
 
             correct_top5 += correct[:, :5].sum()
             correct_top1 += correct[:, :1].sum()
             
-            total += targets.size(0)
+            total += targets.shape(0)
             
     # Save checkpoint.
     acc_top1 = 100.*correct_top1/total

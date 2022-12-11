@@ -81,7 +81,7 @@ def get_default_CNN_model(
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate = lr),  ## feel free to change
         loss="categorical_crossentropy",  ## do not change loss/metrics
-         metrics=["categorical_accuracy"],
+        metrics=["categorical_accuracy"],
     )
 
     ## TODO 4: Pick an appropriate number of epochs and batch size to use for training

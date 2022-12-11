@@ -111,85 +111,6 @@ class BasicBlock_SingleShared(tf.keras.layers.Layer):
         
         return out
 
-# ResNet for unique basis only models
-class ResNet_NonShared(tf.keras.layers.Layer):
-    def __init__(self, block_basis, block_original, num_blocks, unique_rank, num_classes=10):
-        super(ResNet_NonShared, self).__init__()
-        self.in_planes = 16
-
-        self.conv1 = tf.keras.layers.Conv2D(16, 3, strides=1, padding='same', use_bias=False)
-        self.bn1 = tf.keras.layers.BatchNormalization()
-        
-        self.layer1 = self._make_layer(block_basis, block_original, 16, num_blocks[0], unique_rank*1, stride=1)
-        
-        self.layer2 = self._make_layer(block_basis, block_original, 32, num_blocks[1], unique_rank*2, stride=2)
-        
-        self.layer3 = self._make_layer(block_basis, block_original, 64, num_blocks[2], unique_rank*4, stride=2)
-        
-        self.avgpool = tf.keras.layers.GlobalAveragePooling2D() #AdaptiveAvgPool2d((1, 1))
-        self.flat = tf.keras.layers.Flatten()
-        self.fc = tf.keras.layers.Dense(num_classes)
-        
-        for m in self.get_config():
-            if isinstance(m, tf.keras.layers.Conv2D):
-                #initialize every con2d first, then initialize shared basis again later
-                tf.keras.initializers.HeNormal(m.weight, mode='fan_out', nonlinearity='relu')
-            elif isinstance(m, (tf.keras.layers.BatchNormalization, tf.keras.layers.LayerNormalization)): #nn.GroupNorm)
-                tf.keras.initializers.Constant(m.weight, 1)
-                tf.keras.initializers.Constant(m.bias, 0)
-
-    def get_config(self):
-        config = super().get_config()
-        config.update({
-            "arg1": self.in_planes,
-            "arg2": self.conv1,
-            "arg3": self.bn1,
-            "arg4": self.layer1,
-            "arg5": self.layer2,
-            "arg6": self.layer3,
-            "arg7": self.avgpool,
-            "arg8": self.fc
-        })
-        return config
-
-    def _make_layer(self, block_basis, block_original, planes, blocks, unique_rank, stride=1):
-        layers = []
-        
-        layers.append(block_original(self.in_planes, planes, stride))
-        
-        self.in_planes = planes * block_original.expansion
-        for _ in range(1, blocks):
-            layers.append(block_basis(self.in_planes, planes, unique_rank))
-
-        return tf.keras.Sequential(layers = layers)
-    
-    def _make_layer_original(self, block_original, planes, blocks, stride=1):
-        layers = []
-        
-        layers.append(block_original(self.in_planes, planes, stride))
-        
-        self.in_planes = planes * block_original.expansion
-        for _ in range(1, blocks):
-            layers.append(block_original(self.in_planes, planes, stride))
-
-        return tf.keras.Sequential(layers = layers)
-
-    def call(self, x):
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = tf.nn.relu(x)
-
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-
-        x = self.avgpool(x)
-        x = self.flat(x)
-        x = self.fc(x)
-     
-        return x
-
-
 class ResNet(tf.keras.layer.Layer):
     def __init__(self, block, num_blocks, num_classes=10):
         super(ResNet, self).__init__()
@@ -198,9 +119,24 @@ class ResNet(tf.keras.layer.Layer):
         self.conv1 = tf.keras.layers.Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = tf.keras.layers.BatchNormalization()
         
-        self.layer1 = self._make_layer(block, 16, num_blocks[0], stride=1)
-        self.layer2 = self._make_layer(block, 32, num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(block, 64, num_blocks[2], stride=2)
+        self.conv2 = tf.keras.layers.Conv2D(16, strides=1)
+        self.bn2 = tf.keras.layers.BatchNormalization()
+        self.conv3 = tf.keras.layers.Conv2D(16, strides=1)
+        self.bn3 = tf.keras.layers.BatchNormalization()
+        
+        self.conv4 = tf.keras.layers.Conv2D(32, strides=2)
+        self.bn5 = tf.keras.layers.BatchNormalization()
+        self.conv6 = tf.keras.layers.Conv2D(32, strides=2)
+        self.bn6 = tf.keras.layers.BatchNormalization()
+        
+        self.conv7 = tf.keras.layers.Conv2D(64, strides=2)
+        self.bn7 = tf.keras.layers.BatchNormalization()
+        self.conv8 = tf.keras.layers.Conv2D(64, strides=2)
+        self.bn8 = tf.keras.layers.BatchNormalization()
+        
+       # self.layer1 = self._make_layer(block, 16, num_blocks[0], stride=1)
+       # self.layer2 = self._make_layer(block, 32, num_blocks[1], stride=2)
+       # self.layer3 = self._make_layer(block, 64, num_blocks[2], stride=2)
         
         self.avgpool = tf.keras.layers.GlobalAveragePooling2D()
         self.fc = tf.keras.layers.Dense(num_classes)
@@ -214,10 +150,10 @@ class ResNet(tf.keras.layer.Layer):
 
     def _make_layer(self, block, planes, blocks, stride=1):
         layers = []
-        layers.append(block(self.in_planes, planes, stride))
+        layers.append(block(planes, stride))
         self.in_planes = planes * block.expansion
         for _ in range(1, blocks):
-            layers.append(block(self.in_planes, planes))
+            layers.append(block(planes))
 
         return tf.Sequential(*layers)
 
@@ -244,13 +180,16 @@ class ResNet_SingleShared(tf.keras.layer.Layer):
         self.conv1 = tf.keras.layers.Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = tf.keras.layers.BatchNormalization()
         
-        self.shared_basis_1 = tf.keras.layers.Conv2d(16, shared_rank*1, kernel_size=3, stride=1, padding=1, bias=False)
+        self.shared_basis_1 = tf.keras.layers.Conv2d(shared_rank*1, kernel_size=3, stride=1, padding=1, bias=False)
+        
         self.layer1 = self._make_layer(block_basis, block_original, 16, num_blocks[0], unique_rank*1, self.shared_basis_1, stride=1)
         
-        self.shared_basis_2 = tf.keras.layers.Conv2d(32, shared_rank*2, kernel_size=3, stride=1, padding=1, bias=False)
+        self.shared_basis_2 = tf.keras.layers.Conv2d(shared_rank*2, kernel_size=3, stride=1, padding=1, bias=False)
+       
         self.layer2 = self._make_layer(block_basis, block_original, 32, num_blocks[1], unique_rank*2, self.shared_basis_2, stride=2)
         
-        self.shared_basis_3 = tf.keras.layers.Conv2d(64, shared_rank*4, kernel_size=3, stride=1, padding=1, bias=False)
+        self.shared_basis_3 = tf.keras.layers.Conv2d(shared_rank*4, kernel_size=3, stride=1, padding=1, bias=False)
+      
         self.layer3 = self._make_layer(block_basis, block_original, 64, num_blocks[2], unique_rank*4, self.shared_basis_3, stride=2)
         
         self.avgpool = tf.keras.layers.GlobalAveragePooling2D() 
@@ -275,11 +214,11 @@ class ResNet_SingleShared(tf.keras.layer.Layer):
     def _make_layer(self, block_basis, block_original, planes, blocks, unique_rank, shared_basis, stride=1):
         layers = []
         
-        layers.append(block_original(self.in_planes, planes, stride))
+        layers.append(block_original(planes, stride))
         
         self.in_planes = planes * block_original.expansion
         for _ in range(1, blocks):
-            layers.append(block_basis(self.in_planes, planes, unique_rank, shared_basis))
+            layers.append(block_basis(planes, unique_rank, shared_basis))
 
         return tf.keras.Sequential(*layers)
     

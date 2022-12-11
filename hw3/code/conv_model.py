@@ -140,6 +140,66 @@ class CustomSequential(tf.keras.Sequential):
         self.compiled_metrics.update_state(y, y_pred)
         return {m.name: m.result() for m in self.metrics}
 
+
+    def batch_step_shared(self, data, training=False):
+
+        x_raw, y_raw = data
+
+        x = self.input_prep_fn(x_raw)
+        y = self.output_prep_fn(y_raw)
+        if training:
+            x = self.augment_fn(x)
+
+        with tf.GradientTape() as tape:
+            y_pred = self(x, training=training)
+            # Compute the loss value (the loss function is configured in `compile()`)
+            val = self.avg_sim(self.shared_basis_1) + self.avg_sim(self.shared_basis_2) + self.avg_sim(self.shared_basis_3)
+            loss = self.compiled_loss(y, y_pred, regularization_losses=self.losses) + 10*val
+
+        if training:
+            # Compute gradients
+            gradients = tape.gradient(loss, self.trainable_variables)
+            self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+
+        # Update and return metrics (includes the metric that tracks the loss)
+        self.compiled_metrics.update_state(y, y_pred)
+        return {m.name: m.result() for m in self.metrics}
+
+    def avg_sim(self,shared_basis):
+        #shared basis is an input tensor array
+        cnt_sim = 0
+        sim = 0
+
+        print(shared_basis)
+
+        num_all_basis = shared_basis.shape[0]
+        all_basis = shared_basis
+
+        B = tf.concat(all_basis,0).view(num_all_basis, -1)
+            #print("B size:", B.shape)
+
+            # compute orthogonalities btwn all baisis  
+        D = tf.linalg.matmul(B, tf.transpose(B)) 
+
+            # make diagonal zeros
+        #D = (D - tf.eye(num_all_basis, num_all_basis, device=device))**2
+        D = (D - tf.eye(num_all_basis, num_all_basis))**2
+
+        sim += tf.math.reduce_sum(D[0:num_all_basis,0:num_all_basis])
+        cnt_sim += num_all_basis**2
+
+        avg_sim = sim / cnt_sim
+
+        return avg_sim
+            
+
+        
+
+
+
+
+
+
     def train_step(self, data):
         return self.batch_step(data, training=True)
 

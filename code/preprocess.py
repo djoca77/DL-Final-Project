@@ -93,8 +93,8 @@ def get_data_CIFAR(subset, batch_size, data_path="../data"):
     label = tf.one_hot(label, 10, dtype=tf.int32)
     label = tf.reshape(label, [n, 10])
 
-    image = tf.split(image, int(n))
-    label = tf.split(label, int(n))
+    image = tf.split(image, int(n/batch_size))
+    label = tf.split(label, int(n/batch_size))
 
     return image, label
 

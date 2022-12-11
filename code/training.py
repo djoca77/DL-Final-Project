@@ -87,19 +87,22 @@ def train(epoch):
         for var in optimizer.variables():
             var.assign(tf.zeros_like(var))
         
-        outputs = net(tf.expand_dims(tf.gather(inputs,0),0))
+        outputs = net(inputs)
 
         #_, pred = outputs.topk(5, 1, largest=True, sorted=True)
-        pred = tf.math.top_k(outputs, k=1, sorted=True)
+        pred = tf.math.top_k(outputs, k=5, sorted=True)
         #print(trainloader[1])
 
         #label_e = trainloader[1].view(trainloader[1].size(0), -1).expand_as(pred)
 
         label_e = tf.reshape(train_label[batch_idx],(train_label[batch_idx].shape[0], -1))
-        label_e = tf.cast(label_e, dtype=tf.float32)
-        label_e = tf.broadcast_to(label_e,pred)
+        label_e = tf.cast(label_e, dtype=tf.int32)
+        print(label_e)
+        print(pred[1])
+        label_e = tf.broadcast_to(label_e,pred[1])
 
-        correct = pred.eq(label_e).float()
+        correct = tf.math.equal(pred, label_e)
+        correct = tf.cast(correct,tf.float32)
 
         correct_top5 += correct[:, :5].sum()
         correct_top1 += correct[:, :1].sum()        

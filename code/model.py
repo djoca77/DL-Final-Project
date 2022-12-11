@@ -10,65 +10,6 @@ class LambdaLayer(tf.keras.layers.Layer):
     def call(self, x):
         return self.lambd(x)
 
-class BasicBlock_NonShared(tf.keras.layers.Layer):
-    expansion = 1
-
-    def __init__(self, in_planes, planes, unique_rank, stride=1, option='A'):
-        super(BasicBlock_NonShared, self).__init__()
-        
-        self.unique_rank = unique_rank
-        
-        self.total_rank_1 = unique_rank
-        self.total_rank_2 = unique_rank
-        
-        self.basis_conv1 = tf.keras.layers.Conv2D(unique_rank, 3, strides=stride, padding='same', use_bias=False)
-        self.basis_bn1 = tf.keras.layers.BatchNormalization()
-        self.coeff_conv1 = tf.keras.layers.Conv2D(planes, 1, strides=1, padding='same', use_bias=False)
-        
-        #self.bn1 = tf.keras.layers.BatchNormalization(planes)
-        self.bn1 = tf.keras.layers.BatchNormalization()
-        
-        self.basis_conv2 = tf.keras.layers.Conv2D(unique_rank, 3, strides=1, padding='same', use_bias=False)
-        self.basis_bn2 = tf.keras.layers.BatchNormalization()
-        self.coeff_conv2 = tf.keras.layers.Conv2D(planes, 1, strides=1, padding='same', use_bias=False)
-        
-        self.bn2 = tf.keras.layers.BatchNormalization()
-
-        self.shortcut = tf.keras.Sequential()
-        if stride != 1 or in_planes != planes:
-            if option == 'A':
-                """
-                For CIFAR10 ResNet paper uses option A.
-                LambdaLayer implementation is imported from https://github.com/akamaster/pytorch_resnet_cifar10/
-                """
-                self.shortcut = LambdaLayer(lambda x:
-                                            tf.pad(x[:, :, ::2, ::2], (0, 0, 0, 0, planes//4, planes//4), "constant", 0))
-            elif option == 'B':
-                self.shortcut = tf.keras.layers.Sequential(
-                     tf.keras.layers.Conv2D(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False),
-                     tf.keras.layers.BatchNormalization()
-                )
-
-    def call(self, x):           
-        out = self.basis_conv1(x)
-        out = self.basis_bn1(out)
-        out = self.coeff_conv1(out)
-        
-        out = self.bn1(out)
-        out = tf.nn.relu(out)
-        
-        out = self.basis_conv2(out)
-        out = self.basis_bn2(out)
-        out = self.coeff_conv2(out)
-        
-        out = self.bn2(out)
-
-        #out += self.shortcut(x)
-        out = tf.nn.relu(out)
-        
-        return out
-
-
 # Original BasicBlock
 class BasicBlock(tf.keras.layers.Layer):
     expansion = 1
@@ -124,19 +65,19 @@ class BasicBlock_SingleShared(tf.keras.layers.Layer):
         
         self.total_rank = unique_rank+shared_basis.weight.shape[0]
         
-        self.basis_conv1 = tf.keras.layers.Conv2d(in_planes, unique_rank, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.basis_bn1 = nn.BatchNorm2d(self.total_rank)
-        self.coeff_conv1 = nn.Conv2d(self.total_rank, planes, kernel_size=1, stride=1, padding=0, bias=False)
+        self.basis_conv1 = tf.keras.layers.Conv2d(unique_rank, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.basis_bn1 = tf.keras.layers.BatchNormalization()
+        self.coeff_conv1 = tf.keras.layers.Conv2d(planes, kernel_size=1, stride=1, padding=0, bias=False)
         
-        self.bn1 = nn.BatchNorm2d(planes)
+        self.bn1 = tf.keras.layers.BatchNormalization()
         
-        self.basis_conv2 = nn.Conv2d(planes, unique_rank, kernel_size=3, stride=1, padding=1, bias=False)
-        self.basis_bn2 = nn.BatchNorm2d(self.total_rank)
-        self.coeff_conv2 = nn.Conv2d(self.total_rank, planes, kernel_size=1, stride=1, padding=0, bias=False)
+        self.basis_conv2 = tf.keras.layers.Conv2d(unique_rank, kernel_size=3, stride=1, padding=1, bias=False)
+        self.basis_bn2 = tf.keras.layers.BatchNormalization()
+        self.coeff_conv2 = tf.keras.layers.Conv2d(planes, kernel_size=1, stride=1, padding=0, bias=False)
         
-        self.bn2 = nn.BatchNorm2d(planes)
+        self.bn2 = tf.keras.layers.BatchNormalization()
 
-        self.shortcut = nn.Sequential()
+        self.shortcut = tf.keras.Sequential()
         if stride != 1 or in_planes != planes:
             if option == 'A':
                 """
@@ -144,29 +85,29 @@ class BasicBlock_SingleShared(tf.keras.layers.Layer):
                 LambdaLayer implementation is imported from https://github.com/akamaster/pytorch_resnet_cifar10/
                 """
                 self.shortcut = LambdaLayer(lambda x:
-                                            F.pad(x[:, :, ::2, ::2], (0, 0, 0, 0, planes//4, planes//4), "constant", 0))
+                                            tf.pad(x[:, :, ::2, ::2], (0, 0, 0, 0, planes//4, planes//4), "constant", 0))
             elif option == 'B':
-                self.shortcut = nn.Sequential(
-                     nn.Conv2d(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False),
-                     nn.BatchNorm2d(self.expansion * planes)
+                self.shortcut = tf.keras.Sequential(
+                     tf.keras.layers.Conv2D(self.expansion * planes, 1, strides=stride, use_bias=False),
+                     tf.keras.layers.BatchNormalization()
                 )
 
     def forward(self, x):           
-        out = torch.cat((self.basis_conv1(x), self.shared_basis(x)),dim=1)
+        out = tf.concat((self.basis_conv1(x), self.shared_basis(x)),dim=1)
         out = self.basis_bn1(out)
         out = self.coeff_conv1(out)
         
         out = self.bn1(out)
-        out = F.relu(out, inplace=True)
+        out = tf.nn.relu(out)
         
-        out = torch.cat((self.basis_conv2(out), self.shared_basis(out)),dim=1)
+        out = tf.concat((self.basis_conv2(out), self.shared_basis(out)),dim=1)
         out = self.basis_bn2(out)
         out = self.coeff_conv2(out)
         
         out = self.bn2(out)
 
         out += self.shortcut(x)
-        out = F.relu(out, inplace=True)
+        out = tf.nn.relu(out)
         
         return out
 
@@ -262,7 +203,7 @@ class ResNet(tf.keras.layer.Layer):
         self.layer3 = self._make_layer(block, 64, num_blocks[2], stride=2)
         
         self.avgpool = tf.keras.layers.GlobalAveragePooling2D()
-        self.fc = tf.layers.Linear(64, units=num_classes)
+        self.fc = tf.keras.layers.Dense(num_classes)
 
         for m in self.get_config():
             if isinstance(m, tf.keras.layers.Conv2d):
@@ -313,7 +254,7 @@ class ResNet_SingleShared(tf.keras.layer.Layer):
         self.layer3 = self._make_layer(block_basis, block_original, 64, num_blocks[2], unique_rank*4, self.shared_basis_3, stride=2)
         
         self.avgpool = tf.keras.layers.GlobalAveragePooling2D() 
-        self.fc = tf.layers.Linear(64, units=num_classes)
+        self.fc = tf.keras.layers.Dense(num_classes)
         
         for m in self.get_config():
             if isinstance(m, tf.keras.layers.Conv2d):
@@ -326,9 +267,9 @@ class ResNet_SingleShared(tf.keras.layer.Layer):
 
         initializer=tf.orthogonal_initializer()
         
-        torch.nn.init.orthogonal_(self.shared_basis_1.weight)
-        torch.nn.init.orthogonal_(self.shared_basis_2.weight)
-        torch.nn.init.orthogonal_(self.shared_basis_3.weight)
+        initializer(self.shared_basis_1.weight)
+        initializer(self.shared_basis_2.weight)
+        initializer(self.shared_basis_3.weight)
         
 
     def _make_layer(self, block_basis, block_original, planes, blocks, unique_rank, shared_basis, stride=1):
@@ -340,7 +281,7 @@ class ResNet_SingleShared(tf.keras.layer.Layer):
         for _ in range(1, blocks):
             layers.append(block_basis(self.in_planes, planes, unique_rank, shared_basis))
 
-        return nn.Sequential(*layers)
+        return tf.keras.Sequential(*layers)
     
     def _make_layer_original(self, block_original, planes, blocks, stride=1):
         layers = []
@@ -351,7 +292,7 @@ class ResNet_SingleShared(tf.keras.layer.Layer):
         for _ in range(1, blocks):
             layers.append(block_original(self.in_planes, planes, stride))
 
-        return nn.Sequential(*layers)
+        return tf.keras.Sequential(*layers)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -368,11 +309,11 @@ class ResNet_SingleShared(tf.keras.layer.Layer):
      
         return x
 
-# A model without shared bases in each residual block group. Only unique bases used are in each block.
-def ResNet56_NonShared(unique_rank):
-    return ResNet_NonShared(BasicBlock_NonShared, BasicBlock, [9, 9, 9], unique_rank)
-
 # Original ResNet
 def ResNet32():
     return ResNet(BasicBlock, [5, 5, 5])
+
+# A model with a single shared basis in each residual block group.
+def ResNet32_SingleShared(shared_rank, unique_rank):
+    return ResNet_SingleShared(BasicBlock_SingleShared, BasicBlock, [5, 5, 5], shared_rank, unique_rank)
 

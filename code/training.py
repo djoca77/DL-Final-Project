@@ -40,8 +40,8 @@ if args.model not in dic_model:
 #trainloader = utils.get_traindata('CIFAR10',args.dataset_path,batch_size=args.batch_size,download=True)
 #testloader = utils.get_testdata('CIFAR10',args.dataset_path,batch_size=args.batch_size) 
 
-trainloader = get_data_CIFAR('train', args.batch_size, data_path='/Users/jordanwatts/Desktop/DL-Final-Project/data')
-testloader = get_data_CIFAR('test', args.batch_size, data_path='/Users/jordanwatts/Desktop/DL-Final-Project/data')
+train_image, train_label = trainloader = get_data_CIFAR('train', args.batch_size, data_path='/Users/dannyjoca/Desktop/DL/DL-Final-Project/data')
+test_image, test_label = testloader = get_data_CIFAR('test', args.batch_size, data_path='/Users/dannyjoca/Desktop/DL/DL-Final-Project/data')
 
 #args.visible_device sets which cuda devices to be used"
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  
@@ -76,36 +76,28 @@ def train(epoch):
     correct_top1 = 0
     correct_top5 = 0
     total = 0
-    
-    count = 0
-   # print(trainloader[1])
 
-    #for batch_idx, (inputs, targets) in enumerate(trainloader):
-    for batch_idx, (inputs) in enumerate(trainloader):
-        #print(inputs.shape)
-        #print(targets.shape)
+    for batch_idx, (inputs) in enumerate(test_image):
+
         ##"device" no work
         #inputs, targets = inputs.to(device), targets.to(device)
         #print(inputs)
-        print(batch_idx)
+        #print(batch_idx)
         #optimizer.zero_grad()
         for var in optimizer.variables():
             var.assign(tf.zeros_like(var))
         
         outputs = net(tf.expand_dims(tf.gather(inputs,0),0))
-        
+
         #_, pred = outputs.topk(5, 1, largest=True, sorted=True)
         pred = tf.math.top_k(outputs, k=1, sorted=True)
-        print(trainloader[1])
+        #print(trainloader[1])
 
         #label_e = trainloader[1].view(trainloader[1].size(0), -1).expand_as(pred)
-        print(pred)
 
-        label_e = tf.reshape(trainloader[1],(trainloader[1].shape[0], -1))
-        label_e = tf.cast(label_e,float)
+        label_e = tf.reshape(train_label[batch_idx],(train_label[batch_idx].shape[0], -1))
+        label_e = tf.cast(label_e, dtype=tf.float32)
         label_e = tf.broadcast_to(label_e,pred)
-
-
 
         correct = pred.eq(label_e).float()
 
@@ -113,7 +105,7 @@ def train(epoch):
         correct_top1 += correct[:, :1].sum()        
         total += trainloader[1].shape(0)
                         
-        loss = criterion(outputs, trainloader[1])
+        loss = criterion(outputs, train_label[batch_idx])
         if (batch_idx == 0):
             print("accuracy_loss: %.6f" % loss)
             count = 1

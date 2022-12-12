@@ -1,4 +1,6 @@
 import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras.models import Model
 import copy
 
 
@@ -14,8 +16,7 @@ class LambdaLayer(tf.keras.layers.Layer):
 class BasicBlock(tf.keras.layers.Layer):
     expansion = 1
 
-    def __init__(self, in_planes, planes, stride=1, option='A'):
-        super(BasicBlock, self).__init__()
+    def __init__(self, planes, stride=1, option='A'):
         
         self.conv1 = tf.keras.layers.Conv2D(planes, 3, strides=stride, padding='same', use_bias=False)
         self.bn1 = tf.keras.layers.BatchNormalization()
@@ -23,7 +24,7 @@ class BasicBlock(tf.keras.layers.Layer):
         self.bn2 = tf.keras.layers.BatchNormalization()
 
         self.shortcut = tf.keras.Sequential()
-        if stride != 1 or in_planes != planes:
+        if stride != 1:
             if option == 'A':
                 """
                 For CIFAR10 ResNet paper uses option A.
@@ -111,32 +112,30 @@ class BasicBlock_SingleShared(tf.keras.layers.Layer):
         
         return out
 
-class ResNet(tf.keras.layer.Layer):
+class ResNet(Model):
     def __init__(self, block, num_blocks, num_classes=10):
-        super(ResNet, self).__init__()
-        self.in_planes = 16
 
-        self.conv1 = tf.keras.layers.Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv1 = tf.keras.layers.Conv2D(16, kernel_size=3, strides=1, padding="same", use_bias=False)
         self.bn1 = tf.keras.layers.BatchNormalization()
         
-        self.conv2 = tf.keras.layers.Conv2D(16, strides=1)
-        self.bn2 = tf.keras.layers.BatchNormalization()
-        self.conv3 = tf.keras.layers.Conv2D(16, strides=1)
-        self.bn3 = tf.keras.layers.BatchNormalization()
+       #self.conv2 = tf.keras.layers.Conv2D(16, strides=1)
+       # self.bn2 = tf.keras.layers.BatchNormalization()
+       ## self.conv3 = tf.keras.layers.Conv2D(16, strides=1)
+       # self.bn3 = tf.keras.layers.BatchNormalization()
         
-        self.conv4 = tf.keras.layers.Conv2D(32, strides=2)
-        self.bn5 = tf.keras.layers.BatchNormalization()
-        self.conv6 = tf.keras.layers.Conv2D(32, strides=2)
-        self.bn6 = tf.keras.layers.BatchNormalization()
+       # self.conv4 = tf.keras.layers.Conv2D(32, strides=2)
+       # self.bn5 = tf.keras.layers.BatchNormalization()
+       # self.conv6 = tf.keras.layers.Conv2D(32, strides=2)
+       # self.bn6 = tf.keras.layers.BatchNormalization()
         
-        self.conv7 = tf.keras.layers.Conv2D(64, strides=2)
-        self.bn7 = tf.keras.layers.BatchNormalization()
-        self.conv8 = tf.keras.layers.Conv2D(64, strides=2)
-        self.bn8 = tf.keras.layers.BatchNormalization()
+       # self.conv7 = tf.keras.layers.Conv2D(64, strides=2)
+        #self.bn7 = tf.keras.layers.BatchNormalization()
+       # self.conv8 = tf.keras.layers.Conv2D(64, strides=2)
+       # self.bn8 = tf.keras.layers.BatchNormalization()
         
-       # self.layer1 = self._make_layer(block, 16, num_blocks[0], stride=1)
-       # self.layer2 = self._make_layer(block, 32, num_blocks[1], stride=2)
-       # self.layer3 = self._make_layer(block, 64, num_blocks[2], stride=2)
+        self.layer1 = self._make_layer(block, 16, num_blocks[0], stride=1)
+        self.layer2 = self._make_layer(block, 32, num_blocks[1], stride=2)
+        self.layer3 = self._make_layer(block, 64, num_blocks[2], stride=2)
         
         self.avgpool = tf.keras.layers.GlobalAveragePooling2D()
         self.fc = tf.keras.layers.Dense(num_classes)
@@ -151,11 +150,10 @@ class ResNet(tf.keras.layer.Layer):
     def _make_layer(self, block, planes, blocks, stride=1):
         layers = []
         layers.append(block(planes, stride))
-        self.in_planes = planes * block.expansion
         for _ in range(1, blocks):
             layers.append(block(planes))
 
-        return tf.Sequential(*layers)
+        return tf.keras.Sequential(layers)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -172,7 +170,7 @@ class ResNet(tf.keras.layer.Layer):
      
         return x
 
-class ResNet_SingleShared(tf.keras.layer.Layer):
+class ResNet_SingleShared(tf.keras.layers.Layer):
     def __init__(self, block_basis, block_original, num_blocks, shared_rank, unique_rank, num_classes=10):
         super(ResNet_SingleShared, self).__init__()
         self.in_planes = 16

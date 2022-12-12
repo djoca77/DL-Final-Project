@@ -1,8 +1,6 @@
-from types import SimpleNamespace
-
 import numpy as np
 import tensorflow as tf
-from conv_model_shared import CustomSequential
+
 
 ## Run functions eagerly to allow numpy conversions.
 ## Enable experimental debug mode to suppress warning (feel free to remove second line)
@@ -26,13 +24,11 @@ def get_data():
         D_info: TF Dataset metadata
     """
 
-    ## This process may take a bit to load the first time; should get much faster
     import tensorflow_datasets as tfds
 
-    ## Overview of dataset downloading: https://www.tensorflow.org/datasets/catalog/overview
-    ## CIFAR-10 Dataset https://www.tensorflow.org/datasets/catalog/cifar10
+ 
     (D0, D1), D_info = tfds.load(
-        "cifar10", as_supervised=True, split=["train[:50%]", "test"], with_info=True
+        "cifar10", as_supervised=True, split=["train", "test"], with_info=True
     )
 
     X0, X1 = [np.array([r[0] for r in tfds.as_numpy(D)]) for D in (D0, D1)]
@@ -66,44 +62,21 @@ def run_task(data, task, subtask="all", epochs=None, batch_size=None):
     :return trained model
     """
     import conv_model_shared     ## Where your model, preprocessing, and augmentation pipelines are.
-    import layers_keras   ## Where your layer subclass components are
-    import layers_manual  ## Where your manual non-diffable conv implementation resides
+
 
     ## Retrieve data from tuple
     X0, Y0, X1, Y1, D0, D1, D_info = data
 
-    subtask = [1, 2, 3] if subtask == "all" else [int(subtask)]
+ 
 
-    ## Get a working model with regular tf.keras.layers components
-    ## when task = 1.
-    conv_ns = tf.keras.layers
-    norm_ns = tf.keras.layers
-    drop_ns = tf.keras.layers
-    man_conv_ns = tf.keras.layers
+    
 
-    ## Switch the tf.keras.layers components out with the appropriate
-    ## implementations from layers_keras.py when task = 2 or 3 and
-    ## when subtask = 1, 2, or 3.
-    if task in (2, 3):
-        if 1 in subtask:
-            conv_ns = layers_keras
-        if 2 in subtask:
-            norm_ns = layers_keras
-        if 3 in subtask:
-            drop_ns = layers_keras
 
-    ## Use your manual Conv2D implementation from layers_manual.py
-    ## when task = 3.
-    if task == 3:
-        man_conv_ns = layers_manual
 
     ## Retrieve the actual CNN model given which version of convolution,
     ## batch normalization, and dropout we're using
     args = conv_model_shared.get_default_CNN_model(
-        conv_ns = conv_ns, 
-        norm_ns = norm_ns, 
-        drop_ns = drop_ns, 
-        man_conv_ns = man_conv_ns
+       
     )
 
     ## Prioritize function arguments
@@ -136,15 +109,3 @@ def run_task(data, task, subtask="all", epochs=None, batch_size=None):
     return args.model
 
 
-###############################################################################################
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Process some integers.")
-    parser.add_argument("--task",    default=1,     choices='1 2 3 all'.split(), help="task to perform")
-    parser.add_argument("--subtask", default="all", type=str,                    help="subtask to perform")
-    args = parser.parse_args()
-
-    data = get_data()
-    run_task(data, args.task, args.subtask)
